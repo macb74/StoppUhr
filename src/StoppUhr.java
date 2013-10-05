@@ -1,5 +1,6 @@
 import com.cloudgarden.layout.AnchorConstraint;
 import com.cloudgarden.layout.AnchorLayout;
+import org.apache.commons.lang3.time.StopWatch;
 
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -10,7 +11,11 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.TimeZone;
+
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -40,10 +45,6 @@ public class StoppUhr extends javax.swing.JFrame {
 	private JButton resetButton;
 	private JLabel stoppuhrAusgabe;
 	private JLabel uhrzeitAusgabe;
-	private boolean started = false;
-	private boolean running = false;
-    private int sek = 0;
-    private int min = 0;
     private JTextArea jTextArea;
     private JLabel jLabelFontSize;
     private JTextField jTextFieldStNr;
@@ -52,18 +53,10 @@ public class StoppUhr extends javax.swing.JFrame {
     private JPanel jPanel4;
     private JButton minusButton;
     private JButton plusButton;
-    private int h = 0;
     private int uhrFontSize = 80;
     private int counter = 0;
-    String StringMin = "00";
-    String StringSek = "00";
-    String StringH = "00";
-    String calMin = "0";
-    String calSek = "0";
-    String calH = "0";
-    String StringUhrMin = "00";
-    String StringUhrSek = "00";
-    String StringUhrH = "00";
+	String action = "";
+	String displayString = "";
 	public FileWriter csvFile;
 	
 	/**
@@ -152,24 +145,24 @@ public class StoppUhr extends javax.swing.JFrame {
 			{
 				jPanel1 = new JPanel();
 				GridBagLayout jPanel1Layout = new GridBagLayout();
-				getContentPane().add(jPanel1, new AnchorConstraint(47, 987, 956, 834, AnchorConstraint.ANCHOR_REL, AnchorConstraint.ANCHOR_REL, AnchorConstraint.ANCHOR_REL, AnchorConstraint.ANCHOR_REL));
+				getContentPane().add(jPanel1, new AnchorConstraint(48, 987, 954, 820, AnchorConstraint.ANCHOR_REL, AnchorConstraint.ANCHOR_REL, AnchorConstraint.ANCHOR_REL, AnchorConstraint.ANCHOR_REL));
 				jPanel1Layout.rowWeights = new double[] {0.1, 0.1, 0.1, 1.0, 0.1};
 				jPanel1Layout.rowHeights = new int[] {1, 1, 1, 1, 1};
 				jPanel1Layout.columnWeights = new double[] {0.1};
 				jPanel1Layout.columnWidths = new int[] {7};
 				jPanel1.setLayout(jPanel1Layout);
-				jPanel1.setPreferredSize(new java.awt.Dimension(70, 240));
+				jPanel1.setPreferredSize(new java.awt.Dimension(100, 330));
 				{
 					startButton = new JButton();
 					jPanel1.add(startButton, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0));
-					startButton.setPreferredSize(new java.awt.Dimension(80, 30));
+					startButton.setPreferredSize(new java.awt.Dimension(90, 30));
 					startButton.setText("Start");
 				}
 				{
 					resetButton = new JButton();
 					jPanel1.add(resetButton, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0));
 					resetButton.setText("Reset");
-					resetButton.setPreferredSize(new java.awt.Dimension(80, 30));
+					resetButton.setPreferredSize(new java.awt.Dimension(90, 30));
 				}
 				{
 					jPanel4 = new JPanel();
@@ -249,11 +242,14 @@ public class StoppUhr extends javax.swing.JFrame {
 
 	private void startButtonListener(ActionEvent evt) {
 		if (evt.getActionCommand().equals("Start")) {
-			startButton.setText("Stop");
-	        running = true;
+			startButton.setText("Pause");
+	        action = "start";
+		} else if (evt.getActionCommand().equals("Pause")) {
+			action = "suspend";
+			startButton.setText("Resume");
 		} else {
-			running = false;
-			startButton.setText("Start");
+			action = "resume";
+			startButton.setText("Pause");
 		}
 
 		try { Thread.sleep(100); } catch (InterruptedException e) { e.printStackTrace(); }
@@ -261,8 +257,7 @@ public class StoppUhr extends javax.swing.JFrame {
 	}
 
 	private void resetButtonListener(ActionEvent evt) {
-		running = false;
-		stoppUhrReset();
+		action = "reset";
 		startButton.setText("Start");
 		jTextFieldStNr.requestFocus();
 	}
@@ -274,13 +269,13 @@ public class StoppUhr extends javax.swing.JFrame {
         openCsv();
 		csvFile.append(counter + ";");
         csvFile.append(jTextFieldStNr.getText() + ";");
-        csvFile.append(StringUhrH + ":" + StringUhrMin + ":" + StringUhrSek + ";");
-		csvFile.append(StringH + ":" + StringMin + ":" + StringSek + "\n");
+        csvFile.append(uhrzeitAusgabe.getText() + ";");
+		csvFile.append(stoppuhrAusgabe.getText() + "\n");
 		closeCsv();
 		
 		jTextArea.append(counter + " - ");
-		jTextArea.append(StringUhrH + ":" + StringUhrMin + ":" + StringUhrSek + " - ");
-		jTextArea.append(StringH + ":" + StringMin + ":" + StringSek + " - ");
+		jTextArea.append(uhrzeitAusgabe.getText() + " - ");
+		jTextArea.append(stoppuhrAusgabe.getText() + " - ");
 		jTextArea.append(jTextFieldStNr.getText() + "\n");
 
 		jTextFieldStNr.setText("");
@@ -305,13 +300,6 @@ public class StoppUhr extends javax.swing.JFrame {
     	System.exit(0);
 	}
 
-    public void stoppUhrReset() {
-	    sek = 0;
-	    min = 0;
-	    h = 0;
-	    
-        stoppuhrAusgabe.setText(StringH + ":" + StringMin + ":" + StringSek);
-    }
 	
 	public void openCsv() {
 	  	try {
@@ -335,60 +323,43 @@ public class StoppUhr extends javax.swing.JFrame {
 	class StoppUhrThread extends Thread{	    
 	
 	    public void run(){
-	      while(true){
-		      try{Thread.sleep(1000);}catch(Exception e){}
-	    	  if(running) {
-		          if(sek <= 58){
-		            sek++;
-		          } else {
-		            sek = 0;
-		            if(min <= 58){
-		              min++;
-		            } else {
-		              min = 0;
-		              h++;
-		            }
-		          }
-	        }
-	        
-	        if(min <= 9) { StringMin = "0" + min; } else { StringMin = Integer.toString(min); }
-	        if(sek <= 9) { StringSek = "0" + sek; } else { StringSek = Integer.toString(sek); }
-	        if(h <= 9) { StringH = "0" + h; } else { StringH = Integer.toString(h); }
-	        
-	        stoppuhrAusgabe.setText(StringH + ":" + StringMin + ":" + StringSek);
-	      }
+	    	StopWatch stopWatch = new StopWatch();
+
+	    	while(true){
+		    	if(action.equals("start"))    {stopWatch.start();   action = ""; }
+		    	if(action.equals("suspend"))  {stopWatch.suspend(); action = ""; }
+		    	if(action.equals("reset"))    {stopWatch.reset();   action = ""; }
+		    	if(action.equals("resume"))   {stopWatch.resume();  action = ""; }
+		    	
+		    	try{Thread.sleep(200);}catch(Exception e){}
+		    	if(stopWatch.toString().length() == 11) {
+		    		displayString = "0" + stopWatch.toString().substring(0,7);
+		    	} else {
+		    		displayString = stopWatch.toString().substring(0,7);		    		
+		    	}
+		    	
+		    	stoppuhrAusgabe.setText(displayString);
+		    	
+		    	//System.out.println(stopWatch.toString());
+		    	//System.out.println(stopWatch.toString().length());
+	       }
 	    }
 	    
 	}
 
 
 	class UhrzeitThread extends Thread{
-		Calendar calender = Calendar.getInstance();
-		private int uSek = calender.get(Calendar.SECOND);
-		private int uMin = calender.get(Calendar.MINUTE);
-		private int uH = calender.get(Calendar.HOUR_OF_DAY);
 	
 		public void run(){
-		    //uhrzeitAusgabe.setText(h + " : " + min + " : " + sek);
+			
 			while(true){
-		    try{Thread.sleep(1000);}catch(Exception e){}
-		     if(uSek <= 58){
-		       uSek++;
-		     }else {
-		       uSek = 0;
-		       if(uMin <= 58){
-		         uMin++;
-		       } else {
-		         uMin = 0;
-		         uH++;
-		       }
-		     }
-		   
-	        if(uMin <= 9) { StringUhrMin = "0" + uMin; } else { StringUhrMin = Integer.toString(uMin); }
-	        if(uSek <= 9) { StringUhrSek = "0" + uSek; } else { StringUhrSek = Integer.toString(uSek); }
-	        if(uH <= 9) { StringUhrH = "0" + uH; } else { StringUhrH = Integer.toString(uH); }
-
-	        uhrzeitAusgabe.setText(StringUhrH + ":" + StringUhrMin + ":" + StringUhrSek);
+				Calendar calendar = Calendar.getInstance();
+				calendar.setTimeZone(TimeZone.getTimeZone("CET"));
+				DateFormat fmt = new SimpleDateFormat("HH:mm:ss");
+				//System.out.println(fmt.format(calendar.getTime()));
+				
+				try{Thread.sleep(200);}catch(Exception e){}
+				uhrzeitAusgabe.setText(fmt.format(calendar.getTime()));
 		  }
 		}
 	}
